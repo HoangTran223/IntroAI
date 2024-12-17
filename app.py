@@ -10,7 +10,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
+# source venv/bin/activate
 app = Flask(__name__)
 
 class PathFinder:
@@ -40,14 +40,57 @@ class PathFinder:
         r = 6371000  # Radius of earth in meters
         return c * r
 
+    # def load_graph(self):
+    #     try:
+    #         graph_path = "lieu_giai_graph.graphml"
+    #         self.G = ox.load_graphml(graph_path)
+            
+    #         # Convert graph nodes to (lon, lat) coordinates
+    #         pos = {node: (float(self.G.nodes[node]['x']), float(self.G.nodes[node]['y'])) 
+    #               for node in self.G.nodes()}
+            
+    #         # Build graph structure with actual road distances
+    #         self.graph = {}
+    #         for node in self.G.nodes():
+    #             neighbors = []
+    #             for neighbor in self.G.neighbors(node):
+    #                 if 'length' in self.G.edges[node, neighbor, 0]:
+    #                     dist = float(self.G.edges[node, neighbor, 0]['length'])
+    #                     neighbors.append((pos[neighbor], dist))
+    #             self.graph[pos[node]] = neighbors
+            
+    #         logger.info("Graph loaded successfully")
+    #         return True
+            
+    #     except Exception as e:
+    #         logger.error(f"Failed to load graph: {str(e)}")
+    #         return False
+
     def load_graph(self):
         try:
             graph_path = "lieu_giai_graph.graphml"
-            self.G = ox.load_graphml(graph_path)
-            
+
+            # Check if the graphml file already exists
+            if not os.path.exists(graph_path):
+                # If not, download from OSM using the bounding box
+                self.G = ox.graph_from_bbox(self.NORTH, self.SOUTH, self.EAST, self.WEST, network_type="drive")
+                ox.save_graphml(self.G, filepath=graph_path)  # Save to file
+                logger.info("Graph downloaded and saved successfully")
+            else:
+                # If graphml file already exists, load the graph
+                self.G = ox.load_graphml(graph_path)
+                
+                # Check if the loaded graph contains highway data in edges
+                if not any('highway' in data for _, _, data in self.G.edges(data=True)):
+                    self.G = ox.graph_from_bbox(self.NORTH, self.SOUTH, self.EAST, self.WEST, network_type="drive")
+                    ox.save_graphml(self.G, filepath=graph_path) # Save to file
+                    logger.info("Graph redownloaded and saved successfully")
+                else:
+                    logger.info("Graph loaded successfully")
+
             # Convert graph nodes to (lon, lat) coordinates
             pos = {node: (float(self.G.nodes[node]['x']), float(self.G.nodes[node]['y'])) 
-                  for node in self.G.nodes()}
+                    for node in self.G.nodes()}
             
             # Build graph structure with actual road distances
             self.graph = {}
@@ -58,10 +101,9 @@ class PathFinder:
                         dist = float(self.G.edges[node, neighbor, 0]['length'])
                         neighbors.append((pos[neighbor], dist))
                 self.graph[pos[node]] = neighbors
-            
-            logger.info("Graph loaded successfully")
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to load graph: {str(e)}")
             return False
@@ -144,6 +186,40 @@ class PathFinder:
 
 pathfinder = PathFinder()
 
+
+#
+highway_colors = {
+    "motorway": "#E9537B",  # Reddish
+    "trunk": "#F49342",    # Orange
+    "primary": "#F0C244",   # Yellow
+    "secondary": "#9CB624",   # Olive Green
+    "tertiary": "#9CB624",   # Olive Green
+    "unclassified": "#cccccc", # Light Gray
+    "residential": "#bbbbbb",  # Gray
+    "service": "#bbbbbb", # Gray
+    "living_street": "#bbbbbb", #Gray
+    "road": "#bbbbbb",  # Gray
+    "footway": "#919191",  # dark gray
+    "path": "#919191",  # dark gray
+    "cycleway": "#87CEFA",   # Light blue
+    "pedestrian": "#87CEFA", # Light blue
+    "steps": "#919191",  # Dark gray
+    'track': "#919191",  # Dark gray
+    "railway": "#7B7B7B",  # Medium gray
+    'bus_guideway': "#00FFFF",  # Cyan
+    "bridleway": "#FF69B4", # Hot pink
+}
+#
+
+
+
+
+
+
+
+
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -153,6 +229,9 @@ def get_map():
     try:
         # Create figure with fixed dimensions
         fig, ax = plt.subplots(figsize=(12, 12))
+
+        # Default edge color
+        default_edge_color = '#cccccc'
         
         # Plot graph with consistent orientation
         ox.plot_graph(
