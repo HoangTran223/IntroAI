@@ -232,13 +232,16 @@ def get_map():
 
         # Default edge color
         default_edge_color = '#cccccc'
+
+        ec = [highway_colors.get(data[2]['highway'], default_edge_color)
+            for data in pathfinder.G.edges(keys=True, data=True)]
         
         # Plot graph with consistent orientation
         ox.plot_graph(
             pathfinder.G,
             ax=ax,
             node_size=0,
-            edge_color='#2E5894',
+            edge_color=ec,
             edge_linewidth=1.0,
             show=False,
             close=False,
