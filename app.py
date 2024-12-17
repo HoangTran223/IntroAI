@@ -262,7 +262,8 @@ def get_map():
         plt.savefig(img_data, format='png', dpi=300, bbox_inches='tight', pad_inches=0)
         img_data.seek(0)
         plt.close(fig)
-        
+
+        logger.info("Map generated successfully. Returning image.")
         return send_file(img_data, mimetype='image/png')
         
     except Exception as e:
