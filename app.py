@@ -233,8 +233,8 @@ def get_map():
         # Default edge color
         default_edge_color = '#cccccc'
 
-        ec = [highway_colors.get(data[2]['highway'], default_edge_color)
-            for data in pathfinder.G.edges(keys=True, data=True)]
+        ec = [highway_colors.get(data.get('highway'), default_edge_color)
+            for _, _, data in pathfinder.G.edges(data=True)]
         
         # Plot graph with consistent orientation
         ox.plot_graph(
@@ -265,7 +265,7 @@ def get_map():
 
         logger.info("Map generated successfully. Returning image.")
         return send_file(img_data, mimetype='image/png')
-        
+
     except Exception as e:
         logger.error(f"Error generating map: {str(e)}")
         return "Error generating map", 500
